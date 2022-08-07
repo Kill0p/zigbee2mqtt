@@ -18,3 +18,14 @@ mqtt:
 serial:
   # Location of CC2531 USB sniffer
   port: /dev/ttyACM0
+
+frontend:
+  port: 7070
+  host: 0.0.0.0
+
+availability:
+  active:
+    timeout: 1
+  passive:
+    timeout: 5
+
