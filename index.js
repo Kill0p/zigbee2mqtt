@@ -1,12 +1,10 @@
-require('core-js/features/object/from-entries');
-require('core-js/features/array/flat');
 const semver = require('semver');
 const engines = require('./package.json').engines;
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {exec} = require('child_process');
-const rimraf = require('rimraf');
+const {rimrafSync} = require('rimraf');
 require('source-map-support').install();
 
 let controller;
@@ -43,7 +41,7 @@ async function writeHash() {
 async function build(reason) {
     return new Promise((resolve, reject) => {
         process.stdout.write(`Building Zigbee2MQTT... (${reason})`);
-        rimraf.sync('dist');
+        rimrafSync('dist');
         const env = {...process.env};
         const _600mb = 629145600;
         if (_600mb > os.totalmem() && !env.NODE_OPTIONS) {
@@ -120,10 +118,16 @@ async function handleQuit() {
     }
 }
 
-if (process.argv.length === 3 && process.argv[2] === 'writehash') {
-    writeHash();
+if (require.main === module || require.main.filename.endsWith(path.sep + 'cli.js')) {
+    if (process.argv.length === 3 && process.argv[2] === 'writehash') {
+        writeHash();
+    } else {
+        process.on('SIGINT', handleQuit);
+        process.on('SIGTERM', handleQuit);
+        start();
+    }
 } else {
     process.on('SIGINT', handleQuit);
     process.on('SIGTERM', handleQuit);
-    start();
+    module.exports = {start};
 }

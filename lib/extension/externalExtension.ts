@@ -28,8 +28,8 @@ export default class ExternalExtension extends Extension {
         const basePath = this.getExtensionsBasePath();
         if (fs.existsSync(basePath)) {
             return fs.readdirSync(basePath).filter((f) => f.endsWith('.js')).map((fileName) => {
-                const extensonFilePath = path.join(basePath, fileName);
-                return {'name': fileName, 'code': fs.readFileSync(extensonFilePath, 'utf-8')};
+                const extensionFilePath = path.join(basePath, fileName);
+                return {'name': fileName, 'code': fs.readFileSync(extensionFilePath, 'utf-8')};
             });
         } else {
             return [];
@@ -56,15 +56,15 @@ export default class ExternalExtension extends Extension {
 
     @bind private async saveExtension(message: KeyValue): Promise<MQTTResponse> {
         const {name, code} = message;
-        const ModuleConstructor = utils.loadModuleFromText(code) as typeof Extension;
+        const ModuleConstructor = utils.loadModuleFromText(code, name) as typeof Extension;
         await this.loadExtension(ModuleConstructor);
         const basePath = this.getExtensionsBasePath();
         /* istanbul ignore else */
         if (!fs.existsSync(basePath)) {
             fs.mkdirSync(basePath);
         }
-        const extensonFilePath = path.join(basePath, path.basename(name));
-        fs.writeFileSync(extensonFilePath, code);
+        const extensionFilePath = path.join(basePath, path.basename(name));
+        fs.writeFileSync(extensionFilePath, code);
         this.publishExtensions();
         logger.info(`Extension ${name} loaded`);
         return utils.getResponse(message, {}, null);
@@ -95,7 +95,7 @@ export default class ExternalExtension extends Extension {
     private loadUserDefinedExtensions(): void {
         const extensions = this.getListOfUserDefinedExtensions();
         extensions
-            .map(({code}) => utils.loadModuleFromText(code))
+            .map(({code, name}) => utils.loadModuleFromText(code, name))
             .map(this.loadExtension);
     }
 

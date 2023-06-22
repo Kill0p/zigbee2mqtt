@@ -1,4 +1,5 @@
 import http from 'http';
+import https from 'https';
 import gzipStatic, {RequestHandler} from 'connect-gzip-static';
 import finalhandler from 'finalhandler';
 import logger from '../util/logger';
@@ -6,6 +7,7 @@ import frontend from 'zigbee2mqtt-frontend';
 import WebSocket from 'ws';
 import net from 'net';
 import url from 'url';
+import fs from 'fs';
 import * as settings from '../util/settings';
 import utils from '../util/utils';
 import stringify from 'json-stable-stringify-without-jsonify';
@@ -19,6 +21,8 @@ export default class Frontend extends Extension {
     private mqttBaseTopic = settings.get().mqtt.base_topic;
     private host = settings.get().frontend.host;
     private port = settings.get().frontend.port;
+    private sslCert = settings.get().frontend.ssl_cert;
+    private sslKey = settings.get().frontend.ssl_key;
     private authToken = settings.get().frontend.auth_token;
     private retainedMessages = new Map();
     private server: http.Server;
@@ -33,8 +37,28 @@ export default class Frontend extends Extension {
         this.eventBus.onMQTTMessagePublished(this, this.onMQTTPublishMessage);
     }
 
+    private isHttpsConfigured():boolean {
+        if (this.sslCert && this.sslKey) {
+            if (!fs.existsSync(this.sslCert) || !fs.existsSync(this.sslKey)) {
+                logger.error(`defined ssl_cert '${this.sslCert}' or ssl_key '${this.sslKey}' file path does not exists, server won't be secured.`); /* eslint-disable-line max-len */
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+
     override async start(): Promise<void> {
-        this.server = http.createServer(this.onRequest);
+        if (this.isHttpsConfigured()) {
+            const serverOptions = {
+                key: fs.readFileSync(this.sslKey),
+                cert: fs.readFileSync(this.sslCert)};
+            this.server = https.createServer(serverOptions, this.onRequest);
+        } else {
+            this.server = http.createServer(this.onRequest);
+        }
+
         this.server.on('upgrade', this.onUpgrade);
 
         /* istanbul ignore next */
@@ -50,18 +74,26 @@ export default class Frontend extends Extension {
         this.wss = new WebSocket.Server({noServer: true});
         this.wss.on('connection', this.onWebSocketConnection);
 
-        this.server.listen(this.port, this.host);
-        logger.info(`Started frontend on port ${this.host}:${this.port}`);
+        if (this.host.startsWith('/')) {
+            this.server.listen(this.host);
+            logger.info(`Started frontend on socket ${this.host}`);
+        } else {
+            this.server.listen(this.port, this.host);
+            logger.info(`Started frontend on port ${this.host}:${this.port}`);
+        }
     }
 
     override async stop(): Promise<void> {
         super.stop();
-        for (const client of this.wss.clients) {
+        this.wss?.clients.forEach((client) => {
             client.send(stringify({topic: 'bridge/state', payload: 'offline'}));
             client.terminate();
+        });
+        this.wss?.close();
+        /* istanbul ignore else */
+        if (this.server) {
+            return new Promise((cb: () => void) => this.server.close(cb));
         }
-        this.wss.close();
-        return new Promise((cb: () => void) => this.server.close(cb));
     }
 
     @bind private onRequest(request: http.IncomingMessage, response: http.ServerResponse): void {
@@ -76,8 +108,8 @@ export default class Frontend extends Extension {
 
     @bind private onUpgrade(request: http.IncomingMessage, socket: net.Socket, head: Buffer): void {
         this.wss.handleUpgrade(request, socket, head, (ws) => {
-            this.authenticate(request, (isAuthentificated) => {
-                if (isAuthentificated) {
+            this.authenticate(request, (isAuthenticated) => {
+                if (isAuthenticated) {
                     this.wss.emit('connection', ws, request);
                 } else {
                     ws.close(4401, 'Unauthorized');

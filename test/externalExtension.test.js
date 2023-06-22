@@ -3,7 +3,7 @@ const logger = require('./stub/logger');
 const zigbeeHerdsman = require('./stub/zigbeeHerdsman');
 const MQTT = require('./stub/mqtt');
 const path = require('path');
-const rimraf = require('rimraf');
+const {rimrafSync} = require('rimraf');
 const settings = require('../lib/util/settings');
 const Controller = require('../lib/controller');
 const stringify = require('json-stable-stringify-without-jsonify');
@@ -45,7 +45,7 @@ describe('User extensions', () => {
     });
     afterEach(() => {
         const extensionPath = path.join(data.mockDir, 'extension');
-        rimraf.sync(extensionPath);
+        rimrafSync(extensionPath);
     })
 
     it('Load user extension', async () => {
@@ -84,7 +84,12 @@ describe('User extensions', () => {
         MQTT.events.message('zigbee2mqtt/bridge/request/extension/save', stringify({"name": "foo.js", "code": extensionCode}));
         await flushPromises();
 
-        expect(MQTT.publish).toHaveBeenCalledWith('zigbee2mqtt/bridge/response/extension/save', stringify({"data":{},"error":"Unexpected identifier","status":"error"}), { retain: false, qos: 0 }, expect.any(Function));
+        expect(MQTT.publish).toHaveBeenCalledWith('zigbee2mqtt/bridge/response/extension/save', expect.any(String), { retain: false, qos: 0 }, expect.any(Function));
+        const payload = JSON.parse(MQTT.publish.mock.calls[0][1]);
+        expect(payload).toEqual(
+            expect.objectContaining({"data":{},"status":"error"})
+        );
+        expect(payload.error).toMatch("Unexpected identifier");
     });
 
     it('Removes user extension', async () => {
