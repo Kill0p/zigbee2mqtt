@@ -29,4 +29,30 @@ advanced:
     type: '5424'
 groups:
   '1':
-    friendly_name: rolety/jadalnia
+    friendly_name: rolety/dol
+    devices:
+      - 0xa4c138e1e59b285f/1
+      - 0xa4c138e1e59b285f/2
+devices:
+  '0xa4c138e1e59b285f':
+    friendly_name: Jadalnia - Rolety - HS Lewa i Prawa
+  '0xa4c1382ab17a544f':
+    friendly_name: Kuchnia - Rolety - Prawe
+  '0xa4c138c9b2db3851':
+    friendly_name: Jadalnia - Rolety - HS Taras
+  '0xa4c138c07539c3bc':
+    friendly_name: Biuro - Rolety
+  '0xa4c1386e7d2e9ead':
+    friendly_name: Lazienka Dolna - Rolety
+  '0xa4c13845ddf3ccc8':
+    friendly_name: Korytarz - Rolety
+  '0xa4c1380d7697fc2b':
+    friendly_name: Sypialnia - Rolety
+  '0xa4c138047b061d1b':
+    friendly_name: Pokoj 4 - Rolety
+  '0xa4c1389d60407fec':
+    friendly_name: '0xa4c1389d60407fec'
+  '0xa4c1389ffc735c2e':
+    friendly_name: Salon - Rolety
+  '0xa4c138274254d716':
+    friendly_name: Kuchnia - Rolety - Lewe
